@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f2937">
+<title>Semáforo Mantención</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="assets/icono-192.png">
+<link rel="apple-touch-icon" href="assets/icono-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="cabecera">
+  <div class="marca">
+    <img src="assets/icono-192.png" alt="">
+    <div><b>Semáforo Mantención</b><small id="cabSubtitulo">Hospital</small></div>
+  </div>
+  <button id="btnSync" class="sync local" type="button" title="Estado de sincronización"><i></i><span>Solo aquí</span></button>
+</header>
+
+<main>
+
+  <!-- ===================== TABLERO ===================== -->
+  <section id="v-tablero" class="vista activa">
+    <div class="semaforo" id="semaforo">
+      <button type="button" class="luz rojo" data-estado="rojo"><i></i><b>0</b><span>Reportados</span></button>
+      <button type="button" class="luz amarillo" data-estado="amarillo"><i></i><b>0</b><span>En trabajo</span></button>
+      <button type="button" class="luz verde" data-estado="verde"><i></i><b>0</b><span>Finalizados</span></button>
+    </div>
+
+    <div id="alertas" class="alertas"></div>
+
+    <div class="filtros">
+      <input id="fBuscar" type="search" placeholder="Buscar: título, recinto, responsable…" autocomplete="off">
+      <div class="fila">
+        <select id="fSector"><option value="">Todos los sectores</option></select>
+        <select id="fCategoria"><option value="">Todas las categorías</option></select>
+      </div>
+      <div class="fila">
+        <select id="fPrioridad"><option value="">Toda prioridad</option><option value="alta">Alta</option><option value="media">Media</option><option value="baja">Baja</option></select>
+        <select id="fOrden"><option value="reciente">Más recientes</option><option value="antiguo">Más antiguos</option><option value="prioridad">Por prioridad</option><option value="plazo">Por plazo</option></select>
+      </div>
+      <button type="button" id="fLimpiar" class="enlace" hidden>✕ Quitar filtros</button>
+    </div>
+
+    <div id="lista" class="lista"></div>
+    <div id="listaVacia" class="vacio" hidden>
+      <div class="vacio-icono">📋</div>
+      <p>No hay hallazgos que mostrar.</p>
+      <p><small>Toca <b>＋ Nuevo</b> para reportar el primero: saca una foto del problema y queda en <b style="color:var(--rojo)">rojo</b> hasta que alguien lo atienda.</small></p>
+    </div>
+  </section>
+
+  <!-- ===================== NUEVO / EDITAR ===================== -->
+  <section id="v-nuevo" class="vista">
+    <form id="formHallazgo" autocomplete="off">
+      <h2 id="nuevoTitulo">Nuevo hallazgo</h2>
+      <input type="hidden" id="nId">
+
+      <label>Fotos del hallazgo
+        <div class="botones-foto">
+          <button type="button" class="btn" id="btnCamara">📷 Tomar foto</button>
+          <button type="button" class="btn secundario" id="btnGaleria">🖼️ Elegir de galería</button>
+        </div>
+        <input type="file" id="nFotoCamara" accept="image/*" capture="environment" hidden>
+        <input type="file" id="nFotoGaleria" accept="image/*" multiple hidden>
+      </label>
+      <div id="nPreview" class="previews"></div>
+
+      <label>¿Qué se encontró? *
+        <input id="nTitulo" required maxlength="120" placeholder="Ej: Porcelanato de piso soplado">
+      </label>
+
+      <div class="fila">
+        <label>Categoría
+          <select id="nCategoria"></select>
+        </label>
+        <label>Prioridad
+          <select id="nPrioridad">
+            <option value="alta">🔴 Alta (riesgo / urgente)</option>
+            <option value="media" selected>🟠 Media</option>
+            <option value="baja">🟢 Baja</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="fila">
+        <label>Edificio / sector
+          <input id="nSector" list="dlSector" placeholder="Ej: Torre B, Urgencia">
+          <datalist id="dlSector"></datalist>
+        </label>
+        <label>Piso
+          <input id="nPiso" list="dlPiso" placeholder="Ej: 3">
+          <datalist id="dlPiso"></datalist>
+        </label>
+      </div>
+      <label>Recinto / lugar exacto
+        <input id="nRecinto" list="dlRecinto" placeholder="Ej: Pasillo frente a sala 312">
+        <datalist id="dlRecinto"></datalist>
+      </label>
+
+      <label>Descripción
+        <textarea id="nDescripcion" rows="3" placeholder="Detalle, medidas, riesgo para pacientes, etc."></textarea>
+      </label>
+
+      <div class="fila">
+        <label>Responsable de atenderlo
+          <input id="nResponsable" list="dlResponsable" placeholder="Nombre o empresa">
+          <datalist id="dlResponsable"></datalist>
+        </label>
+        <label>Plazo para resolver
+          <input id="nPlazo" type="date">
+        </label>
+      </div>
+
+      <label>Reportado por
+        <input id="nReportadoPor" placeholder="Tu nombre">
+      </label>
+
+      <div class="acciones">
+        <button type="button" class="btn secundario" id="btnCancelarNuevo">Cancelar</button>
+        <button type="submit" class="btn primario" id="btnGuardarNuevo">🚨 Reportar en rojo</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- ===================== DETALLE ===================== -->
+  <section id="v-detalle" class="vista">
+    <div class="barra-detalle">
+      <button type="button" class="enlace" id="btnVolver">‹ Volver</button>
+      <div class="derecha">
+        <button type="button" class="enlace" id="btnEditar">✏️ Editar</button>
+        <button type="button" class="enlace peligro" id="btnEliminar">🗑️</button>
+      </div>
+    </div>
+    <div id="detalle"></div>
+  </section>
+
+  <!-- ===================== INFORMES ===================== -->
+  <section id="v-informes" class="vista">
+    <h2>Informes y respaldo</h2>
+
+    <div class="tarjeta">
+      <h3>Resumen</h3>
+      <div id="resumen" class="resumen"></div>
+    </div>
+
+    <div class="tarjeta">
+      <h3>Por sector</h3>
+      <div id="tablaSector" class="tabla"></div>
+    </div>
+
+    <div class="tarjeta">
+      <h3>Por categoría</h3>
+      <div id="tablaCategoria" class="tabla"></div>
+    </div>
+
+    <div class="tarjeta">
+      <h3>📄 Informe con fotos</h3>
+      <p class="ayuda">Documento para enviar a jefatura o guardar en Drive. Se puede abrir en cualquier celular o PC y desde ahí imprimir o guardar como PDF.</p>
+      <label class="check"><input type="checkbox" id="infSoloAbiertos"> Solo pendientes y en trabajo (sin los finalizados)</label>
+      <label class="check"><input type="checkbox" id="infFotosGrandes"> Incluir fotos en tamaño completo (archivo más pesado)</label>
+      <div class="acciones">
+        <button type="button" class="btn secundario" id="btnInformeDescargar">⬇️ Descargar</button>
+        <button type="button" class="btn primario" id="btnInformeCompartir">📤 Compartir / guardar en Drive</button>
+      </div>
+    </div>
+
+    <div class="tarjeta">
+      <h3>📊 Planilla Excel (CSV)</h3>
+      <p class="ayuda">Todos los hallazgos con fechas, estado, responsable y días abiertos. Se abre en Excel o Google Sheets.</p>
+      <div class="acciones">
+        <button type="button" class="btn secundario" id="btnCsvDescargar">⬇️ Descargar</button>
+        <button type="button" class="btn primario" id="btnCsvCompartir">📤 Compartir / guardar en Drive</button>
+      </div>
+    </div>
+
+    <div class="tarjeta">
+      <h3>💾 Respaldo completo</h3>
+      <p class="ayuda">Archivo con todo (fichas, historial y fotos). Sirve para restaurar en otro teléfono o guardar copia en Drive.</p>
+      <div class="acciones">
+        <button type="button" class="btn secundario" id="btnRespaldoDescargar">⬇️ Descargar</button>
+        <button type="button" class="btn primario" id="btnRespaldoCompartir">📤 Compartir / guardar en Drive</button>
+      </div>
+      <div class="acciones">
+        <button type="button" class="btn secundario" id="btnImportar">📥 Restaurar desde un respaldo</button>
+        <input type="file" id="archivoImportar" accept=".json,application/json" hidden>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== AJUSTES ===================== -->
+  <section id="v-ajustes" class="vista">
+    <h2>Ajustes</h2>
+
+    <div class="tarjeta">
+      <h3>Este dispositivo</h3>
+      <label>Tu nombre (aparece como "reportado por")
+        <input id="ajUsuario" placeholder="Ej: Nicolás">
+      </label>
+      <label>Nombre del establecimiento
+        <input id="ajEstablecimiento" placeholder="Ej: Hospital Regional">
+      </label>
+      <label>Alertar si un hallazgo lleva más de
+        <div class="fila-inline"><input id="ajDiasAlerta" type="number" min="1" max="90" style="width:5em"> días en rojo sin atender</div>
+      </label>
+    </div>
+
+    <div class="tarjeta" id="tarjetaSync">
+      <h3>Sincronización con el equipo</h3>
+      <p class="ayuda">Con una <b>clave de equipo</b> todos los celulares y el PC ven los mismos hallazgos y fotos. Usa tu proyecto Firebase (plan gratuito).</p>
+      <div id="syncEstado" class="sync-estado"></div>
+      <label>Clave de equipo
+        <input id="ajClave" placeholder="Ej: hospital-mantencion-2026" autocomplete="off">
+      </label>
+      <details>
+        <summary>Usar otro proyecto Firebase (opcional)</summary>
+        <label>Pega aquí el bloque <code>firebaseConfig</code> de tu proyecto. Si lo dejas vacío se usa el proyecto incorporado.
+          <textarea id="ajFbConfig" rows="4" placeholder='const firebaseConfig = { apiKey: "...", projectId: "...", appId: "..." };'></textarea>
+        </label>
+      </details>
+      <div class="acciones">
+        <button type="button" class="btn secundario" id="btnDesconectar">Desconectar</button>
+        <button type="button" class="btn primario" id="btnConectar">Conectar</button>
+      </div>
+    </div>
+
+    <div class="tarjeta">
+      <h3>Notificaciones</h3>
+      <p class="ayuda">Avisa en este dispositivo cuando llega un hallazgo nuevo en rojo desde el equipo, o cuando hay hallazgos vencidos al abrir la app.</p>
+      <div class="acciones">
+        <button type="button" class="btn secundario" id="btnNotif">🔔 Activar notificaciones</button>
+      </div>
+    </div>
+
+    <div class="tarjeta">
+      <h3>Datos de este dispositivo</h3>
+      <p class="ayuda" id="ajResumenDatos"></p>
+      <div class="acciones">
+        <button type="button" class="btn secundario" id="btnDemo">Cargar ejemplos de prueba</button>
+        <button type="button" class="btn peligro" id="btnBorrarTodo">Borrar todo lo local</button>
+      </div>
+    </div>
+
+    <p class="version">Semáforo Mantención · versión <span id="version"></span> · no depende de ningún servicio pagado.</p>
+  </section>
+
+</main>
+
+<nav class="menu">
+  <button type="button" data-vista="tablero" class="activa"><span>🚦</span>Tablero</button>
+  <button type="button" data-vista="nuevo"><span>➕</span>Nuevo</button>
+  <button type="button" data-vista="informes"><span>📄</span>Informes</button>
+  <button type="button" data-vista="ajustes"><span>⚙️</span>Ajustes</button>
+</nav>
+
+<!-- Ventana para cambiar de estado o agregar nota/foto -->
+<dialog id="dlgAccion">
+  <form method="dialog" id="formAccion">
+    <h3 id="accTitulo">Cambiar estado</h3>
+    <p id="accTexto" class="ayuda"></p>
+    <label id="accLblResponsable">Quién lo está ejecutando
+      <input id="accResponsable" list="dlResponsable" placeholder="Nombre o empresa">
+    </label>
+    <label>Comentario
+      <textarea id="accNota" rows="3" placeholder="Ej: Se retiró el porcelanato suelto y se dejó señalizado"></textarea>
+    </label>
+    <label>Fotos (avance / trabajo terminado)
+      <div class="botones-foto">
+        <button type="button" class="btn" id="accCamara">📷 Tomar foto</button>
+        <button type="button" class="btn secundario" id="accGaleria">🖼️ Galería</button>
+      </div>
+      <input type="file" id="accFotoCamara" accept="image/*" capture="environment" hidden>
+      <input type="file" id="accFotoGaleria" accept="image/*" multiple hidden>
+    </label>
+    <div id="accPreview" class="previews"></div>
+    <div class="acciones">
+      <button type="button" class="btn secundario" id="accCancelar">Cancelar</button>
+      <button type="submit" class="btn primario" id="accConfirmar">Confirmar</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Foto en grande -->
+<dialog id="dlgFoto" class="visor">
+  <img id="visorImg" alt="">
+  <div class="visor-pie"><span id="visorTexto"></span><button type="button" class="btn" id="visorCerrar">Cerrar</button></div>
+</dialog>
+
+<div id="toast" class="toast" hidden></div>
+
+<script src="db.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
